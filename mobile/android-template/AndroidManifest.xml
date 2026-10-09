@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Sovereign Overwatch — AndroidManifest permissions template.
+
+  After `npx cap add android`, merge these permissions into:
+    android/app/src/main/AndroidManifest.xml
+
+  Do NOT publish to Play Store — sideload the APK over your LAN/Tailscale.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Network: Tailscale mesh + LAN cleartext when needed -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Precise + background location for OwnTracks-style telemetry -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
+    <!-- Keep interval alive while screen off (best-effort; OEM dependent) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <uses-feature
+        android:name="android.hardware.location.gps"
+        android:required="false" />
+
+    <application
+        android:usesCleartextTraffic="true"
+        android:networkSecurityConfig="@xml/network_security_config">
+        <!--
+          Capacitor injects MainActivity. Ensure the activity also has:
+            android:launchMode="singleTask"
+          so Tailscale deep links don't spawn duplicate WebViews.
+        -->
+    </application>
+</manifest>

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0a0e14" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <title>Sovereign Overwatch</title>
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+    <style>
+      :root {
+        --bg: #0a0e14;
+        --panel: #121820;
+        --line: #1e2a38;
+        --text: #d7e0ea;
+        --muted: #7a8b9c;
+        --accent: #3dba8c;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: radial-gradient(1200px 600px at 20% -10%, #142033 0%, var(--bg) 55%);
+        color: var(--text);
+        font-family: "IBM Plex Mono", "JetBrains Mono", ui-monospace, monospace;
+      }
+      .shell {
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        height: 100dvh;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--line);
+        background: color-mix(in srgb, var(--panel) 88%, transparent);
+        backdrop-filter: blur(8px);
+      }
+      header h1 {
+        margin: 0;
+        font-size: 0.95rem;
+        letter-spacing: 0.12em;
+        color: var(--accent);
+      }
+      #status {
+        font-size: 0.7rem;
+        color: var(--muted);
+        text-align: right;
+        max-width: 55vw;
+      }
+      iframe#dashboard {
+        width: 100%;
+        height: 100%;
+        border: 0;
+        background: #09090b;
+      }
+      footer {
+        border-top: 1px solid var(--line);
+        background: var(--panel);
+        padding: 0.75rem 1rem 1rem;
+        display: grid;
+        gap: 0.5rem;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+      }
+      label {
+        display: block;
+        font-size: 0.65rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 0.25rem;
+      }
+      input {
+        width: 100%;
+        background: #0b1018;
+        border: 1px solid var(--line);
+        color: var(--text);
+        border-radius: 4px;
+        padding: 0.45rem 0.55rem;
+        font: inherit;
+        font-size: 0.8rem;
+      }
+      .actions {
+        display: flex;
+        gap: 0.5rem;
+      }
+      button {
+        flex: 1;
+        border: 1px solid var(--line);
+        background: #0f1620;
+        color: var(--text);
+        font: inherit;
+        font-size: 0.75rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding: 0.55rem 0.75rem;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button#btn-start {
+        border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+        color: var(--accent);
+      }
+      button:active {
+        transform: translateY(1px);
+      }
+      .hint {
+        font-size: 0.65rem;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header>
+        <h1>SOVEREIGN OVERWATCH</h1>
+        <div id="status">DISARMED</div>
+      </header>
+      <iframe
+        id="dashboard"
+        title="Tactical Dashboard"
+        allow="geolocation *; microphone *"
+        referrerpolicy="no-referrer"
+      ></iframe>
+      <footer>
+        <div>
+          <label for="backend-url">Tailscale dashboard / API base URL</label>
+          <input
+            id="backend-url"
+            type="url"
+            placeholder="https://overwatch.tailnet.ts.net"
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </div>
+        <div class="row">
+          <div>
+            <label for="callsign">Callsign</label>
+            <input id="callsign" maxlength="32" placeholder="ALPHA-1" />
+          </div>
+          <div>
+            <label for="enc-key">AES key (base64, optional)</label>
+            <input id="enc-key" type="password" placeholder="32-byte key b64" autocomplete="off" />
+          </div>
+        </div>
+        <div class="actions">
+          <button id="btn-start" type="button">Arm Telemetry</button>
+          <button id="btn-stop" type="button">Disarm</button>
+        </div>
+        <p class="hint">
+          Local-first · Tailscale mesh · POST /api/telemetry every 60s · IndexedDB offline queue
+        </p>
+      </footer>
+    </div>
+    <script type="module" src="./src/main.ts"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js').catch(() => {});
+        });
+      }
+    </script>
+  </body>
+</html>
