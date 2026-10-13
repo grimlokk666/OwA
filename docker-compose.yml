@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  overwatch-backend:
+    build: ./backend
+    container_name: overwatch-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///./data/overwatch.db
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
+      - TELEMETRY_ENCRYPTION_KEY=${TELEMETRY_ENCRYPTION_KEY:-}
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+    volumes:
+      - ./backend/data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  overwatch-frontend:
+    build: ./frontend
+    container_name: overwatch-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - overwatch-backend

@@ -1,0 +1,37 @@
+{
+  "name": "Sovereign Overwatch",
+  "short_name": "Overwatch",
+  "description": "Local-first tactical mission control — map, cameras, ADS-B, scanner feeds, and device telemetry. Zero SaaS. Zero store tracking.",
+  "id": "/sovereign-overwatch",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#09090b",
+  "theme_color": "#09090b",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["utilities", "navigation"],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

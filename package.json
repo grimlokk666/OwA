@@ -1,0 +1,35 @@
+{
+  "name": "sovereign-overwatch",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sovereign Overwatch — local-first mission control with mobile PWA and Capacitor telemetry node",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --config mobile/vite.config.ts",
+    "build": "vite build --config mobile/vite.config.ts",
+    "preview": "vite preview --config mobile/vite.config.ts",
+    "typecheck": "tsc --noEmit -p mobile/tsconfig.json",
+    "cap:sync": "npm run build && npx cap sync",
+    "cap:android": "npm run cap:sync && npx cap open android",
+    "cap:ios": "npm run cap:sync && npx cap open ios",
+    "android:build": "npm run cap:sync && cd android && ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.2.0",
+    "@capacitor/app": "^7.0.1",
+    "@capacitor/core": "^7.2.0",
+    "@capacitor/geolocation": "^7.1.2",
+    "@capacitor/ios": "^7.2.0",
+    "@capacitor/network": "^7.0.1",
+    "@capacitor/preferences": "^7.0.1",
+    "idb": "^8.0.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.2.0",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

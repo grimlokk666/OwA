@@ -1,0 +1,136 @@
+/**
+ * Sovereign Overwatch — tactical dashboard shell
+ * Loads OSM map + polls local /api feeds. No commercial map/flight SDKs.
+ */
+
+(function () {
+  const map = L.map('map', { zoomControl: false }).setView([40.5, -84.5], 10);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap Contributors',
+  }).addTo(map);
+
+  const deviceMarkers = L.layerGroup().addTo(map);
+
+  async function refreshAdsb() {
+    const el = document.getElementById('adsb-feed');
+    if (!el) return;
+    try {
+      const res = await fetch('/api/adsb');
+      if (!res.ok) throw new Error(String(res.status));
+      const data = await res.json();
+      const aircraft = data.aircraft || [];
+      if (!aircraft.length) {
+        el.innerHTML =
+          '<p class="text-emerald-500">&gt; Monitoring local dump1090 — no contacts</p>';
+        return;
+      }
+      el.innerHTML = aircraft
+        .slice(0, 12)
+        .map((a) => {
+          const hex = a.hex || a.icao || '?';
+          const flight = a.flight || a.callsign || '————';
+          const alt = a.alt_baro ?? a.altitude ?? '—';
+          return `<div class="flex justify-between gap-2"><span>${flight.trim()}</span><span class="text-zinc-500">${hex}</span><span>${alt} ft</span></div>`;
+        })
+        .join('');
+    } catch {
+      el.innerHTML =
+        '<p class="text-amber-500">&gt; ADS-B feed offline (start local dump1090)</p>';
+    }
+  }
+
+  async function refreshTelemetryTracks() {
+    try {
+      const res = await fetch('/api/telemetry/latest?limit=40');
+      if (!res.ok) return;
+      const data = await res.json();
+      deviceMarkers.clearLayers();
+      for (const p of data.points || []) {
+        if (!p.lat && !p.lon) continue;
+        const marker = L.circleMarker([p.lat, p.lon], {
+          radius: 6,
+          color: '#34d399',
+          fillColor: '#059669',
+          fillOpacity: 0.85,
+          weight: 1,
+        });
+        marker.bindPopup(
+          `<strong>${p.callsign || p.deviceId}</strong><br/>${p.ts}<br/>bat ${p.battery ?? '—'}%`
+        );
+        deviceMarkers.addLayer(marker);
+      }
+    } catch {
+      /* mesh may be down — map stays usable */
+    }
+  }
+
+  async function refreshScanner() {
+    const el = document.getElementById('scanner-status');
+    if (!el) return;
+    try {
+      const res = await fetch('/api/scanner');
+      if (!res.ok) return;
+      const data = await res.json();
+      el.textContent = data.status || 'UNKNOWN';
+      el.className =
+        data.status === 'ONLINE'
+          ? 'text-emerald-400 font-bold'
+          : 'text-amber-400 font-bold';
+    } catch {
+      el.textContent = 'OFFLINE';
+      el.className = 'text-red-400 font-bold';
+    }
+  }
+
+  // Wire mobile telemetry node UI if script loaded
+  const callsignInput = document.getElementById('node-callsign');
+  const toggleBtn = document.getElementById('btn-telemetry-toggle');
+  if (window.SovereignTelemetry && callsignInput && toggleBtn) {
+    const saved = localStorage.getItem('sovereign.callsign') || 'ALPHA-1';
+    callsignInput.value = saved;
+    callsignInput.addEventListener('change', () => {
+      localStorage.setItem('sovereign.callsign', callsignInput.value.trim() || 'ALPHA-1');
+      window.SovereignTelemetry.setCallsign(callsignInput.value.trim() || 'ALPHA-1');
+    });
+
+    toggleBtn.addEventListener('click', async () => {
+      const running = window.SovereignTelemetry.isRunning();
+      if (running) {
+        await window.SovereignTelemetry.stop();
+        toggleBtn.textContent = 'Arm Node';
+      } else {
+        window.SovereignTelemetry.setCallsign(callsignInput.value.trim() || 'ALPHA-1');
+        await window.SovereignTelemetry.start();
+        toggleBtn.textContent = 'Disarm';
+      }
+    });
+
+    window.SovereignTelemetry.onStatus((status) => {
+      const state = document.getElementById('node-state');
+      const last = document.getElementById('node-last-fix');
+      const queue = document.getElementById('node-queue');
+      const badge = document.getElementById('telemetry-badge');
+      if (state) state.textContent = status.state;
+      if (last) last.textContent = status.lastFix || '—';
+      if (queue) queue.textContent = String(status.queueDepth ?? 0);
+      if (badge) {
+        badge.classList.remove('hidden');
+        badge.textContent = `NODE: ${status.state.toUpperCase()}`;
+        badge.className =
+          status.state === 'tracking'
+            ? 'hidden sm:inline text-emerald-400'
+            : 'hidden sm:inline text-amber-400';
+      }
+    });
+  }
+
+  refreshAdsb();
+  refreshScanner();
+  refreshTelemetryTracks();
+  setInterval(refreshAdsb, 15_000);
+  setInterval(refreshScanner, 30_000);
+  setInterval(refreshTelemetryTracks, 20_000);
+
+  window.SovereignMap = map;
+})();

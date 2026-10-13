@@ -1,0 +1,36 @@
+{
+  "appId": "d.sovereign.overwatch",
+  "appName": "Sovereign Overwatch",
+  "webDir": "mobile/dist",
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "https",
+    "cleartext": true,
+    "allowNavigation": [
+      "*.ts.net",
+      "100.*",
+      "10.*",
+      "172.16.*",
+      "192.168.*",
+      "localhost",
+      "127.0.0.1"
+    ]
+  },
+  "android": {
+    "allowMixedContent": true,
+    "backgroundColor": "#0a0e14",
+    "webContentsDebuggingEnabled": false
+  },
+  "ios": {
+    "backgroundColor": "#0a0e14",
+    "contentInset": "automatic",
+    "allowsLinkPreview": false,
+    "scrollEnabled": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": true,
+      "backgroundColor": "#0a0e14"
+    }
+  }
+}
