@@ -8,6 +8,7 @@
     "dev": "vite --config mobile/vite.config.ts",
     "build": "vite build --config mobile/vite.config.ts",
     "preview": "vite preview --config mobile/vite.config.ts",
+    "lint": "eslint frontend/static/js",
     "typecheck": "tsc --noEmit -p mobile/tsconfig.json",
     "cap:sync": "npm run build && npx cap sync",
     "cap:android": "npm run cap:sync && npx cap open android",
@@ -26,6 +27,8 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^7.2.0",
+    "eslint": "^9.39.5",
+    "globals": "^16.5.0",
     "typescript": "^5.8.2",
     "vite": "^6.2.2"
   },

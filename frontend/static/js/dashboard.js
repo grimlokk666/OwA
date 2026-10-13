@@ -12,11 +12,23 @@
 
   const deviceMarkers = L.layerGroup().addTo(map);
 
+  function apiHeaders() {
+    const headers = { Accept: 'application/json' };
+    const token = (localStorage.getItem('sovereign.apiToken') || '').trim();
+    if (token) headers['X-Overwatch-Token'] = token;
+    return headers;
+  }
+
   async function refreshAdsb() {
     const el = document.getElementById('adsb-feed');
     if (!el) return;
     try {
-      const res = await fetch('/api/adsb');
+      const res = await fetch('/api/adsb', { headers: apiHeaders() });
+      if (res.status === 401) {
+        el.innerHTML =
+          '<p class="text-amber-500">&gt; Unauthorized — set the API token in the node panel</p>';
+        return;
+      }
       if (!res.ok) throw new Error(String(res.status));
       const data = await res.json();
       const aircraft = data.aircraft || [];
@@ -42,7 +54,7 @@
 
   async function refreshTelemetryTracks() {
     try {
-      const res = await fetch('/api/telemetry/latest?limit=40');
+      const res = await fetch('/api/telemetry/latest?limit=40', { headers: apiHeaders() });
       if (!res.ok) return;
       const data = await res.json();
       deviceMarkers.clearLayers();
@@ -69,7 +81,12 @@
     const el = document.getElementById('scanner-status');
     if (!el) return;
     try {
-      const res = await fetch('/api/scanner');
+      const res = await fetch('/api/scanner', { headers: apiHeaders() });
+      if (res.status === 401) {
+        el.textContent = 'UNAUTHORIZED';
+        el.className = 'text-amber-400 font-bold';
+        return;
+      }
       if (!res.ok) return;
       const data = await res.json();
       el.textContent = data.status || 'UNKNOWN';
@@ -85,7 +102,24 @@
 
   // Wire mobile telemetry node UI if script loaded
   const callsignInput = document.getElementById('node-callsign');
+  const tokenInput = document.getElementById('node-token');
+  const keyInput = document.getElementById('node-key');
   const toggleBtn = document.getElementById('btn-telemetry-toggle');
+  if (tokenInput) {
+    tokenInput.value = localStorage.getItem('sovereign.apiToken') || '';
+    tokenInput.addEventListener('change', () => {
+      localStorage.setItem('sovereign.apiToken', tokenInput.value.trim());
+      refreshAdsb();
+      refreshScanner();
+      refreshTelemetryTracks();
+    });
+  }
+  if (keyInput) {
+    keyInput.value = localStorage.getItem('sovereign.telemetryKey') || '';
+    keyInput.addEventListener('change', () => {
+      localStorage.setItem('sovereign.telemetryKey', keyInput.value.trim());
+    });
+  }
   if (window.SovereignTelemetry && callsignInput && toggleBtn) {
     const saved = localStorage.getItem('sovereign.callsign') || 'ALPHA-1';
     callsignInput.value = saved;

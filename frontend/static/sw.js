@@ -5,7 +5,7 @@
  * into a permanent store. Live /api/* and map tiles stay network-first.
  */
 
-const CACHE_VERSION = 'sovereign-overwatch-v1';
+const CACHE_VERSION = 'sovereign-overwatch-v2';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 
 const PRECACHE_URLS = [

@@ -12,10 +12,10 @@ import type { TelemetryConfig, TelemetryPoint } from '../types/telemetry';
 import { DEFAULT_TELEMETRY_CONFIG } from '../types/telemetry';
 import { encryptPoint } from './crypto';
 import {
-  clearQueue,
   countQueued,
-  drainQueue,
+  deleteQueued,
   enqueuePoint,
+  listQueued,
 } from './outbox';
 
 export type TelemetryStatus = {
@@ -62,6 +62,7 @@ export class TelemetryService {
       deviceId,
       callsign: 'ALPHA-1',
       backendBaseUrl: '',
+      dashboardUrl: '',
     };
     await this.saveConfig(this.config);
     return this.config;
@@ -200,11 +201,18 @@ export class TelemetryService {
     }
   }
 
+  private requestHeaders(): Record<string, string> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const token = this.config?.apiToken?.trim();
+    if (token) headers['X-Overwatch-Token'] = token;
+    return headers;
+  }
+
   private async post(body: unknown): Promise<boolean> {
     try {
       const res = await fetch(this.endpoint(), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.requestHeaders(),
         body: JSON.stringify(body),
         keepalive: true,
       });
@@ -221,7 +229,14 @@ export class TelemetryService {
         lastFix: `${point.lat.toFixed(5)}, ${point.lon.toFixed(5)} @ ${point.ts}`,
       });
 
-      const payload = await encryptPoint(point, this.config!.encryptionKeyBase64);
+      let payload;
+      try {
+        payload = await encryptPoint(point, this.config!.encryptionKeyBase64);
+      } catch (encryptError) {
+        console.warn('Encryption failed; plaintext was not sent', encryptError);
+        this.emit({ state: 'error', queueDepth: await countQueued() });
+        return;
+      }
       const ok = await this.post(payload);
       if (!ok) {
         await enqueuePoint(point);
@@ -237,13 +252,25 @@ export class TelemetryService {
   }
 
   async flush(): Promise<void> {
-    const queued = await drainQueue();
+    const queued = await listQueued();
     if (!queued.length) return;
-    const ok = await this.post(queued);
-    if (ok) {
-      await clearQueue();
-      this.emit({ queueDepth: 0 });
+    for (const row of queued) {
+      let payload;
+      try {
+        payload = await encryptPoint(row.point, this.config!.encryptionKeyBase64);
+      } catch (encryptError) {
+        console.warn('Encryption failed; queued point kept locally', encryptError);
+        this.emit({ state: 'error', queueDepth: await countQueued() });
+        return;
+      }
+      const ok = await this.post(payload);
+      if (!ok) {
+        this.emit({ state: 'queued', queueDepth: await countQueued() });
+        return;
+      }
+      await deleteQueued(row.id);
     }
+    this.emit({ state: 'tracking', queueDepth: await countQueued() });
   }
 }
 

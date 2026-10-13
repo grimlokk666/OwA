@@ -1,30 +1,61 @@
-version: '3.8'
+name: overwatch
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
 
 services:
   overwatch-backend:
     build: ./backend
+    image: overwatch-backend:local
     container_name: overwatch-backend
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "127.0.0.1:${BACKEND_PORT:-8001}:8000"
     environment:
-      - DATABASE_URL=sqlite:///./data/overwatch.db
-      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
-      - TELEMETRY_ENCRYPTION_KEY=${TELEMETRY_ENCRYPTION_KEY:-}
-      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+      DATABASE_URL: sqlite:////app/data/overwatch.db
+      BACKUP_DIR: /backups
+      TZ: UTC
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-}
+      TELEMETRY_ENCRYPTION_KEY: ${TELEMETRY_ENCRYPTION_KEY:-}
+      TELEMETRY_REQUIRE_KEY: ${TELEMETRY_REQUIRE_KEY:-true}
+      ALERT_TOKEN: ${ALERT_TOKEN:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://127.0.0.1:3012}
+      TELEMETRY_RETENTION_DAYS: ${TELEMETRY_RETENTION_DAYS:-365}
+      POI_CACHE_DAYS: ${POI_CACHE_DAYS:-30}
+      BACKUP_KEEP: ${BACKUP_KEEP:-14}
+      DUMP1090_URL: ${DUMP1090_URL:-http://127.0.0.1:8080/data/aircraft.json}
+      SCANNER_STREAM_URL: ${SCANNER_STREAM_URL:-}
     volumes:
-      - ./backend/data:/app/data
+      - overwatch-data:/app/data
+      - ./backups:/backups
+    logging: *logging
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 20s
 
   overwatch-frontend:
     build: ./frontend
+    image: overwatch-frontend:local
     container_name: overwatch-frontend
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "127.0.0.1:${FRONTEND_PORT:-3012}:80"
     depends_on:
-      - overwatch-backend
+      overwatch-backend:
+        condition: service_healthy
+    logging: *logging
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  overwatch-data:
+    name: overwatch-data

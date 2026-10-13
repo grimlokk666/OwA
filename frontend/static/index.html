@@ -80,10 +80,16 @@
                     <p>Status: <span id="node-state">disarmed</span></p>
                     <p>Last fix: <span id="node-last-fix">—</span></p>
                     <p>Queue (offline): <span id="node-queue">0</span></p>
-                    <p class="text-zinc-600">POST → /api/telemetry every 60s over Tailscale</p>
+                    <p class="text-zinc-600">Encrypted POST → /api/telemetry every 60s. Reads send X-Overwatch-Token.</p>
                 </div>
                 <label class="mt-2 block text-[10px] text-zinc-500 uppercase tracking-wider">Callsign</label>
                 <input id="node-callsign" type="text" maxlength="32" placeholder="ALPHA-1"
+                    class="mt-1 w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200 focus:outline-none focus:border-emerald-600" />
+                <label class="mt-2 block text-[10px] text-zinc-500 uppercase tracking-wider">API token</label>
+                <input id="node-token" type="password" autocomplete="off" placeholder="X-Overwatch-Token"
+                    class="mt-1 w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200 focus:outline-none focus:border-emerald-600" />
+                <label class="mt-2 block text-[10px] text-zinc-500 uppercase tracking-wider">AES key (base64)</label>
+                <input id="node-key" type="password" autocomplete="off" placeholder="32-byte key, or open once with #key="
                     class="mt-1 w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200 focus:outline-none focus:border-emerald-600" />
             </div>
         </div>

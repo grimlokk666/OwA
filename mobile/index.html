@@ -143,7 +143,7 @@
           <input
             id="backend-url"
             type="url"
-            placeholder="https://overwatch.tailnet.ts.net"
+            placeholder="https://overwatch.example.com"
             autocomplete="off"
             spellcheck="false"
           />
@@ -154,16 +154,20 @@
             <input id="callsign" maxlength="32" placeholder="ALPHA-1" />
           </div>
           <div>
-            <label for="enc-key">AES key (base64, optional)</label>
+            <label for="enc-key">AES key (base64, required)</label>
             <input id="enc-key" type="password" placeholder="32-byte key b64" autocomplete="off" />
           </div>
+        </div>
+        <div>
+          <label for="api-token">API token (X-Overwatch-Token)</label>
+          <input id="api-token" type="password" placeholder="shared read/alert token" autocomplete="off" />
         </div>
         <div class="actions">
           <button id="btn-start" type="button">Arm Telemetry</button>
           <button id="btn-stop" type="button">Disarm</button>
         </div>
         <p class="hint">
-          Local-first · Tailscale mesh · POST /api/telemetry every 60s · IndexedDB offline queue
+          Local-first · HTTPS only · encrypted POST /api/telemetry every 60s · IndexedDB offline queue
         </p>
       </footer>
     </div>

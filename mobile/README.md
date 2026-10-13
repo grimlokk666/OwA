@@ -8,4 +8,5 @@ TypeScript shell that:
 Prefer editing `capacitor.config.ts` (authoritative). `capacitor.config.json` is
 kept as a JSON twin for tooling that does not load TS configs.
 
-See [../docs/MOBILE.md](../docs/MOBILE.md) for Android APK and iOS steps.
+See [../docs/MOBILE.md](../docs/MOBILE.md) for Android APK, HTTPS-only network
+security, release keystore signing, and iOS steps.

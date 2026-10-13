@@ -50,6 +50,17 @@ export async function drainQueue(): Promise<TelemetryPoint[]> {
   return rows.map((r) => r.point);
 }
 
+export async function listQueued(): Promise<{ id: number; point: TelemetryPoint }[]> {
+  const db = await getDb();
+  const rows = await db.getAll(STORE);
+  return rows.flatMap((r) => (r.id == null ? [] : [{ id: r.id, point: r.point }]));
+}
+
+export async function deleteQueued(id: number): Promise<void> {
+  const db = await getDb();
+  await db.delete(STORE, id);
+}
+
 export async function clearQueue(): Promise<void> {
   const db = await getDb();
   await db.clear(STORE);

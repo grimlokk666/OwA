@@ -15,6 +15,7 @@ const btnStop = document.getElementById('btn-stop');
 const inputUrl = document.getElementById('backend-url') as HTMLInputElement | null;
 const inputCallsign = document.getElementById('callsign') as HTMLInputElement | null;
 const inputKey = document.getElementById('enc-key') as HTMLInputElement | null;
+const inputToken = document.getElementById('api-token') as HTMLInputElement | null;
 
 function setStatus(text: string) {
   if (statusEl) statusEl.textContent = text;
@@ -25,6 +26,7 @@ async function boot() {
   if (inputUrl) inputUrl.value = cfg.backendBaseUrl || cfg.dashboardUrl || '';
   if (inputCallsign) inputCallsign.value = cfg.callsign;
   if (inputKey) inputKey.value = cfg.encryptionKeyBase64;
+  if (inputToken) inputToken.value = cfg.apiToken || '';
 
   const dash =
     cfg.dashboardUrl ||
@@ -47,6 +49,7 @@ async function boot() {
       dashboardUrl: inputUrl?.value.trim() || '',
       callsign: inputCallsign?.value.trim() || 'ALPHA-1',
       encryptionKeyBase64: inputKey?.value.trim() || '',
+      apiToken: inputToken?.value.trim() || '',
       enabled: true,
       intervalMs: 60_000,
       telemetryPath: '/api/telemetry',

@@ -3,7 +3,7 @@
  *
  * OwnTracks/Traccar-style loop:
  *  - Geolocation every 60s
- *  - POST encrypted or plaintext JSON to /api/telemetry
+ *  - POST an AES-GCM envelope to /api/telemetry (no plaintext fallback)
  *  - IndexedDB queue when Tailscale/VPN/cellular is down; flush on reconnect
  *
  * Note: browsers (esp. iOS Safari) suspend background tabs aggressively.
@@ -20,6 +20,16 @@
   let timerId = null;
   /** @type {((s: object) => void)|null} */
   let statusCb = null;
+  // One-time key import: open https://host/#key=<base64> then the hash is stripped.
+  try {
+    const m = location.hash.match(/key=([A-Za-z0-9+/=_-]{40,64})/);
+    if (m) {
+      localStorage.setItem('sovereign.telemetryKey', decodeURIComponent(m[1]));
+      history.replaceState(null, '', location.pathname + location.search);
+    }
+  } catch {
+    /* ignore malformed hash */
+  }
   let callsign = localStorage.getItem('sovereign.callsign') || 'ALPHA-1';
   let deviceId = localStorage.getItem('sovereign.deviceId') || '';
   let lastFix = null;
@@ -91,21 +101,30 @@
       req.onsuccess = () => resolve(req.result || []);
       req.onerror = () => reject(req.error);
     });
-    if (!rows.length) return;
+    if (!rows.length) return true;
 
-    const batch = rows.map((r) => r.point);
-    const ok = await postTelemetry(batch);
-    if (!ok) return;
-
-    await new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE, 'readwrite');
-      const store = tx.objectStore(STORE);
-      for (const row of rows) store.delete(row.id);
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
-    pendingCount = 0;
-    emit();
+    for (const row of rows) {
+      let payload;
+      try {
+        payload = await maybeEncrypt(row.point);
+      } catch (encryptError) {
+        console.warn('Encrypt failed; plaintext was not sent', encryptError);
+        state = 'error';
+        emit();
+        return false;
+      }
+      const ok = await postTelemetry(payload);
+      if (!ok) return false;
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).delete(row.id);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+      pendingCount = Math.max(0, pendingCount - 1);
+      emit();
+    }
+    return true;
   }
 
   function b64ToBytes(b64) {
@@ -125,32 +144,27 @@
 
   async function maybeEncrypt(point) {
     const keyB64 = localStorage.getItem('sovereign.telemetryKey') || '';
-    if (!keyB64) return point;
-    try {
-      const keyBytes = b64ToBytes(keyB64);
-      if (keyBytes.byteLength !== 32) return point;
-      const key = await crypto.subtle.importKey(
-        'raw',
-        keyBytes,
-        { name: 'AES-GCM' },
-        false,
-        ['encrypt']
-      );
-      const iv = crypto.getRandomValues(new Uint8Array(12));
-      const encoded = new TextEncoder().encode(JSON.stringify(point));
-      const cipherBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
-      return {
-        v: 'sovereign-aes-gcm-v1',
-        deviceId: point.deviceId,
-        callsign: point.callsign,
-        iv: bytesToB64(iv),
-        ciphertext: bytesToB64(new Uint8Array(cipherBuf)),
-        ts: point.ts,
-      };
-    } catch (e) {
-      console.warn('Encrypt failed; sending plaintext over mesh TLS', e);
-      return point;
+    if (!keyB64) {
+      throw new Error('telemetry encryption key required');
     }
+    const keyBytes = b64ToBytes(keyB64);
+    if (keyBytes.byteLength !== 32) {
+      throw new Error('telemetry encryption key must be 32 bytes');
+    }
+    const key = await crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, [
+      'encrypt',
+    ]);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encoded = new TextEncoder().encode(JSON.stringify(point));
+    const cipherBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
+    return {
+      v: 'sovereign-aes-gcm-v1',
+      deviceId: point.deviceId,
+      callsign: point.callsign,
+      iv: bytesToB64(iv),
+      ciphertext: bytesToB64(new Uint8Array(cipherBuf)),
+      ts: point.ts,
+    };
   }
 
   async function postTelemetry(body) {
@@ -226,8 +240,7 @@
       if (!ok) {
         await enqueue(point);
         state = 'queued';
-      } else {
-        await flushQueue();
+      } else if (await flushQueue()) {
         state = 'tracking';
       }
       emit();
