@@ -1,0 +1,10 @@
+[Unit]
+Description=Monthly Sovereign Overwatch navigation refresh
+
+[Timer]
+OnCalendar=*-*-01 03:15:00 UTC
+Persistent=true
+Unit=overwatch-nav-refresh.service
+
+[Install]
+WantedBy=timers.target

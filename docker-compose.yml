@@ -26,8 +26,13 @@ services:
       TELEMETRY_RETENTION_DAYS: ${TELEMETRY_RETENTION_DAYS:-365}
       POI_CACHE_DAYS: ${POI_CACHE_DAYS:-30}
       BACKUP_KEEP: ${BACKUP_KEEP:-14}
-      DUMP1090_URL: ${DUMP1090_URL:-http://127.0.0.1:8080/data/aircraft.json}
+      DUMP1090_URL: ${DUMP1090_URL:-}
       SCANNER_STREAM_URL: ${SCANNER_STREAM_URL:-}
+      OHGO_API_KEY: ${OHGO_API_KEY:-}
+      OHGO_API_URL: ${OHGO_API_URL:-https://publicapi.ohgo.com/api/v1/cameras}
+      OWNTRACKS_TOKEN: ${OWNTRACKS_TOKEN:-}
+      NOMINATIM_URL: ${NOMINATIM_URL:-http://overwatch-nominatim:8080}
+      VALHALLA_URL: ${VALHALLA_URL:-http://overwatch-valhalla:8002}
     volumes:
       - overwatch-data:/app/data
       - ./backups:/backups
@@ -55,6 +60,84 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+
+  # Optional self-hosted navigation. Start with: docker compose --profile nav up -d
+  # Build the extracts first (scripts/nav-download.sh, scripts/nav-build.sh).
+  overwatch-valhalla:
+    profiles: ["nav"]
+    image: ghcr.io/valhalla/valhalla-scripted:3.9.1
+    container_name: overwatch-valhalla
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${VALHALLA_PORT:-8002}:8002"
+    environment:
+      use_tiles_ignore_pbf: "False"
+      force_rebuild: "False"
+      build_elevation: "False"
+      build_admins: "True"
+      build_time_zones: "True"
+      serve_tiles: "True"
+      server_threads: "2"
+      tileset_name: valhalla_tiles
+    volumes:
+      - ./nav-data/valhalla:/custom_files
+    logging: *logging
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8002/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 3600s
+
+  overwatch-nominatim:
+    profiles: ["nav"]
+    image: mediagis/nominatim:5.3.2
+    container_name: overwatch-nominatim
+    restart: unless-stopped
+    shm_size: 1gb
+    ports:
+      - "127.0.0.1:${NOMINATIM_PORT:-8089}:8080"
+    environment:
+      PBF_PATH: /nominatim/data/region.osm.pbf
+      IMPORT_STYLE: address
+      IMPORT_WIKIPEDIA: "false"
+      FREEZE: "true"
+      UPDATE_MODE: "none"
+      THREADS: ${NOMINATIM_THREADS:-4}
+      POSTGRES_SHARED_BUFFERS: 1GB
+      POSTGRES_MAINTENANCE_WORK_MEM: 2GB
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 4GB
+      POSTGRES_WORK_MEM: 32MB
+    volumes:
+      - ./nav-data/pbf:/nominatim/data:ro
+      - ./nav-data/nominatim-pg:/var/lib/postgresql/16/main
+    logging: *logging
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 3600s
+
+  overwatch-tiles:
+    profiles: ["nav"]
+    image: maptiler/tileserver-gl:v5.6.0
+    container_name: overwatch-tiles
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${TILES_PORT:-8090}:8080"
+    environment:
+      TILESERVER_GL_ALLOWED_HOSTS: "localhost,127.0.0.1,overwatch-tiles"
+    volumes:
+      - ./nav-data/tiles:/data
+      - ./nav/tileserver-config.json:/config/config.json:ro
+    command:
+      - --config
+      - /config/config.json
+      - --public_url
+      - http://127.0.0.1:8090/
+      - --ignore-missing-files
+    logging: *logging
 
 volumes:
   overwatch-data:

@@ -5,7 +5,7 @@
  * into a permanent store. Live /api/* and map tiles stay network-first.
  */
 
-const CACHE_VERSION = 'sovereign-overwatch-v2';
+const CACHE_VERSION = 'sovereign-overwatch-v3';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 
 const PRECACHE_URLS = [
@@ -14,6 +14,7 @@ const PRECACHE_URLS = [
   './manifest.json',
   './css/dashboard.css',
   './js/dashboard.js',
+  './js/nav.js',
   './js/telemetry-node.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
@@ -46,8 +47,8 @@ self.addEventListener('activate', (event) => {
 function isLive(url) {
   return (
     url.pathname.startsWith('/api/') ||
+    url.pathname.startsWith('/tiles/') ||
     url.pathname === '/health' ||
-    url.hostname.includes('tile.openstreetmap.org') ||
     url.searchParams.has('live')
   );
 }

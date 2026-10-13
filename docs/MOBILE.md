@@ -184,8 +184,9 @@ Offline replay posts one envelope at a time (the queue stores the point
 locally and encrypts it on flush). A plaintext batch is only accepted when
 `TELEMETRY_REQUIRE_KEY=false`, and it is capped at 500 points.
 
-`GET /api/telemetry/latest`, `/api/pois`, `/api/cameras`, `/api/adsb`, and
-`/api/scanner` require the header `X-Overwatch-Token: <ALERT_TOKEN>`.
+`GET /api/telemetry/latest`, `/api/pois`, `/api/cameras`, `/api/geocode`,
+`/api/adsb`, and `/api/scanner`, plus `POST /api/route`, require the header
+`X-Overwatch-Token: <ALERT_TOKEN>`.
 `POST /api/alert` uses the same header. `/health` stays open for the
 container healthcheck.
 
@@ -233,7 +234,19 @@ to `buildTypes.release` after pasting the snippet.
 
 ---
 
-## 6. Why this respects Sovereign D
+## 6. iPhone background tracking (OwnTracks)
+
+Safari and a home-screen PWA cannot hold a reliable GPS watch in the background.
+For an iPhone that should keep reporting while the screen is off, use the
+OwnTracks app in HTTP mode. Setup, the URL, and Basic versus Bearer auth are
+in [OWNTRACKS.md](OWNTRACKS.md).
+
+The dashboard's Follow button is separate: it uses the browser Geolocation API
+and the Web Speech API for turn-by-turn while the page is open.
+
+---
+
+## 7. Why this respects Sovereign D
 
 - Binaries and PWA assets are **yours** — sideload / Add to Home Screen.
 - No Play Billing, no ATT, no store analytics SDKs.

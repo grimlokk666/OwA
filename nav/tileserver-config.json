@@ -1,0 +1,25 @@
+{
+  "options": {
+    "paths": {
+      "root": "/usr/src/app/node_modules/tileserver-gl-styles",
+      "fonts": "fonts",
+      "styles": "styles",
+      "mbtiles": "/data",
+      "pmtiles": "/data"
+    },
+    "allowedHosts": "127.0.0.1,localhost,overwatch-tiles"
+  },
+  "styles": {
+    "basic-preview": {
+      "style": "basic-preview/style.json",
+      "tilejson": {
+        "bounds": [-90.5, 36.4, -74.6, 48.4]
+      }
+    }
+  },
+  "data": {
+    "v3": {
+      "pmtiles": "region.pmtiles"
+    }
+  }
+}

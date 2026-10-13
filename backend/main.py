@@ -1,12 +1,14 @@
 import asyncio
 import hmac
+import json
 import logging
 import os
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import Body, Depends, FastAPI, Header, HTTPException, Query
+from fastapi import Body, Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from pydantic import ValidationError
 
 from database import get_db, init_db, maintenance
@@ -14,10 +16,11 @@ from models import (
     AlertPayload,
     EncryptedTelemetryEnvelope,
     HealthResponse,
+    RouteRequest,
     TelemetryIngestResponse,
     TelemetryPoint,
 )
-from modules import adsb_tracker, osm_pois, scanner_proxy, traffic_cams
+from modules import adsb_tracker, nav_proxy, osm_pois, owntracks, scanner_proxy, traffic_cams
 from modules.traccar_receiver import decrypt_envelope, encryption_key_configured, persist_point
 
 logging.basicConfig(level=logging.INFO)
@@ -81,7 +84,7 @@ async def sovereign_background_worker():
         try:
             # Placeholder for resilient background polling (DOT cams, ADS-B local dump1090)
             logger.debug("Background feed sync")
-            await adsb_tracker.fetch_local_aircraft()
+            await adsb_tracker.aircraft_status()
         except Exception as e:
             logger.error(
                 "Background worker encountered minor error (resiliently caught): %s", e
@@ -275,12 +278,91 @@ async def cameras(
     radius_km: float = 25.0,
 ):
     radius_km = max(0.1, min(radius_km, 200.0))
-    return {"cameras": await traffic_cams.fetch_nearby_cameras(lat, lon, radius_km)}
+    return await traffic_cams.nearby(lat, lon, radius_km)
+
+
+@app.get("/api/cameras/{camera_id}/snap", dependencies=[Depends(require_api_token)])
+async def camera_snapshot(camera_id: str):
+    if not all(ch.isalnum() or ch in "_.:-" for ch in camera_id) or not camera_id:
+        raise HTTPException(status_code=404, detail="unknown camera")
+    if len(camera_id) > 64:
+        raise HTTPException(status_code=404, detail="unknown camera")
+    try:
+        body, content_type = await traffic_cams.fetch_snapshot(camera_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="unknown camera") from None
+    except LookupError:
+        raise HTTPException(status_code=404, detail="cameras not configured") from None
+    except PermissionError:
+        raise HTTPException(status_code=502, detail="snapshot refused") from None
+    except Exception:
+        logger.info("Camera snapshot failed id=%s", camera_id)
+        raise HTTPException(status_code=502, detail="snapshot unavailable") from None
+    return Response(
+        content=body,
+        media_type=content_type,
+        headers={"Cache-Control": "private, max-age=15"},
+    )
+
+
+@app.get("/api/geocode", dependencies=[Depends(require_api_token)])
+async def geocode(q: str = Query(..., min_length=2, max_length=200), limit: int = 8):
+    try:
+        results = await nav_proxy.search(q.strip(), limit)
+    except nav_proxy.NavError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    return {"results": results}
+
+
+@app.post("/api/route", dependencies=[Depends(require_api_token)])
+async def route(payload: RouteRequest):
+    try:
+        return await nav_proxy.route(
+            payload.origin.model_dump(),
+            payload.destination.model_dump(),
+            payload.profile,
+        )
+    except nav_proxy.NavError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+
+@app.post("/api/tracking/owntracks")
+async def owntracks_ingest(request: Request):
+    """OwnTracks HTTP mode. Bearer token, or Basic password, is OWNTRACKS_TOKEN.
+
+    A 200 response is an empty JSON array so the phone does not treat the body as friends.
+    """
+    if not owntracks.authorized(request.headers.get("authorization", "")):
+        raise HTTPException(status_code=401, detail="unauthorized")
+    raw = await request.body()
+    if not raw.strip():
+        return []
+    try:
+        payload = json.loads(raw)
+    except (json.JSONDecodeError, UnicodeError):
+        raise HTTPException(status_code=400, detail="expected json") from None
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="expected json object")
+    try:
+        point = owntracks.to_point(payload, request.headers.get("x-limit-d"))
+    except ValidationError:
+        raise HTTPException(status_code=422, detail="invalid location") from None
+    if point is None:
+        return []
+    dumped = point.model_dump()
+    async with get_db() as db:
+        await persist_point(db, dumped, encrypted=False, raw_envelope=None)
+    logger.info(
+        "OwnTracks accepted device=%s callsign=%s",
+        dumped.get("deviceId"),
+        dumped.get("callsign"),
+    )
+    return []
 
 
 @app.get("/api/adsb", dependencies=[Depends(require_api_token)])
 async def adsb():
-    return {"aircraft": await adsb_tracker.fetch_local_aircraft()}
+    return await adsb_tracker.aircraft_status()
 
 
 @app.get("/api/scanner", dependencies=[Depends(require_api_token)])

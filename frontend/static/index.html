@@ -25,8 +25,8 @@
             <h1 class="text-lg font-bold tracking-wider text-emerald-400">OVERWATCH // MISSION CONTROL</h1>
         </div>
         <div class="text-xs text-zinc-400 space-x-4 flex items-center">
-            <span>GRID: <strong class="text-zinc-200">ACTIVE</strong></span>
-            <span>ENCRYPTION: <strong class="text-emerald-400">LOCAL-FIRST</strong></span>
+            <span class="nav-desktop-only">GRID: <strong class="text-zinc-200">ACTIVE</strong></span>
+            <span class="nav-desktop-only">ENCRYPTION: <strong class="text-emerald-400">LOCAL-FIRST</strong></span>
             <span id="telemetry-badge" class="hidden sm:inline text-amber-400">NODE: IDLE</span>
             <button id="btn-telemetry-toggle" type="button"
                 class="text-[10px] uppercase tracking-widest border border-zinc-700 px-2 py-1 hover:border-emerald-500 hover:text-emerald-400 transition-colors"
@@ -40,9 +40,21 @@
     <div class="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-2 p-2 overflow-hidden min-h-0">
         <!-- Map & Tactical View (Spans 3 columns) -->
         <div class="lg:col-span-3 bg-zinc-900 border border-zinc-800 rounded flex flex-col relative overflow-hidden min-h-[40vh]">
-            <div class="absolute top-2 left-2 z-[1000] bg-zinc-950/80 backdrop-blur px-3 py-1 rounded border border-zinc-700 text-xs text-emerald-400">
-                TACTICAL MAPPING GRID (OSM TILES)
-            </div>
+            <div class="map-label">LOCAL TILES</div>
+            <form id="nav-bar" class="nav-bar" action="#" autocomplete="off">
+                <input id="nav-search" type="search" enterkeyhint="search" maxlength="200"
+                    placeholder="Search Ohio and neighbors" aria-label="Search places" />
+                <select id="nav-profile" aria-label="Travel mode">
+                    <option value="auto">Auto</option>
+                    <option value="bicycle">Bicycle</option>
+                    <option value="pedestrian">Walk</option>
+                </select>
+                <button id="btn-follow" type="button">Follow</button>
+                <label class="nav-speech"><input id="nav-speech" type="checkbox" checked /> Speak</label>
+                <ul id="nav-results" hidden></ul>
+            </form>
+            <p id="tile-status" class="tile-status" hidden>Self-hosted tiles are not built yet. Run scripts/nav-build.sh, then start the nav profile.</p>
+            <p id="nav-banner" class="nav-banner" hidden></p>
             <div id="map" class="flex-1 w-full h-full bg-zinc-950"></div>
         </div>
 
@@ -51,16 +63,20 @@
             <!-- DOT Traffic Cam Panel -->
             <div class="bg-zinc-900 border border-zinc-800 rounded p-3 flex flex-col">
                 <h2 class="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2">Live DOT Camera Feed</h2>
-                <div id="cam-container" class="bg-zinc-950 h-36 rounded border border-zinc-800 flex items-center justify-center text-zinc-600 text-xs">
-                    [Awaiting Camera Stream / Cached Frame]
-                </div>
+                <div id="cam-container" class="cam-frame">No OHGO_API_KEY set.</div>
+                <div id="cam-list" class="cam-list"></div>
+            </div>
+
+            <div class="bg-zinc-900 border border-zinc-800 rounded p-3 flex flex-col">
+                <h2 class="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2">Turn by turn</h2>
+                <ol id="route-steps" class="route-steps"></ol>
             </div>
 
             <!-- ADS-B / Flight Radar Panel -->
             <div class="bg-zinc-900 border border-zinc-800 rounded p-3 flex flex-col">
                 <h2 class="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2">Airspace Proximity (ADS-B)</h2>
                 <div id="adsb-feed" class="bg-zinc-950 h-28 rounded border border-zinc-800 p-2 text-xs text-zinc-400 overflow-y-auto">
-                    <p class="text-emerald-500">&gt; Monitoring local 300mi transponder radius...</p>
+                    <p class="text-zinc-500">&gt; no receiver configured</p>
                 </div>
             </div>
 
@@ -97,6 +113,7 @@
 
     <script src="./js/telemetry-node.js"></script>
     <script src="./js/dashboard.js"></script>
+    <script src="./js/nav.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
