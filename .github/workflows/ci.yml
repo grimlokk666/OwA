@@ -41,4 +41,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate compose file
-        run: docker compose config --quiet
+        run: |
+          docker compose config --quiet
+          docker compose --profile nav config --quiet
+          bash -n scripts/nav-download.sh scripts/nav-build.sh scripts/nav-refresh.sh
+          ./scripts/nav-download.sh --dry-run
+          ./scripts/nav-build.sh --dry-run
+          ./scripts/nav-refresh.sh --dry-run

@@ -27,7 +27,7 @@ class TelemetryPoint(BaseModel):
     speed: Optional[float] = Field(None, ge=-1, le=2000)
     battery: Optional[float] = Field(None, ge=-1, le=100)
     charging: Optional[bool] = None
-    source: Literal["capacitor", "geolocation", "cached"] = "geolocation"
+    source: Literal["capacitor", "geolocation", "cached", "owntracks"] = "geolocation"
 
 
 class EncryptedTelemetryEnvelope(BaseModel):
@@ -57,3 +57,14 @@ class POIResult(BaseModel):
     lat: Optional[float] = None
     lon: Optional[float] = None
     tags: Optional[dict[str, Any]] = None
+
+
+class LatLon(BaseModel):
+    lat: float = Field(..., ge=-90, le=90)
+    lon: float = Field(..., ge=-180, le=180)
+
+
+class RouteRequest(BaseModel):
+    origin: LatLon
+    destination: LatLon
+    profile: Literal["auto", "bicycle", "pedestrian"] = "auto"

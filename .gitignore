@@ -9,6 +9,9 @@ keystore.properties
 # Local DB backups (may contain tracks)
 backups/
 
+# Navigation extracts, Valhalla tiles, Nominatim postgres, PMTiles
+nav-data/
+
 # Python
 __pycache__/
 *.py[cod]

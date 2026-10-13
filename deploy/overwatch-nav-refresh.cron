@@ -1,0 +1,5 @@
+# Sovereign Overwatch — monthly navigation refresh.
+# Install with: crontab -e, and replace /opt/owa with the checkout path.
+# 03:15 UTC on the 1st. The job re-downloads OH, IN, MI, KY, WV, and PA,
+# rebuilds PMTiles and Valhalla, and reimports Nominatim.
+15 3 1 * * cd /opt/owa && NAV_REIMPORT_NOMINATIM=1 ./scripts/nav-refresh.sh >> /var/log/overwatch-nav-refresh.log 2>&1

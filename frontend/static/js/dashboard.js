@@ -1,14 +1,12 @@
 /**
  * Sovereign Overwatch — tactical dashboard shell
- * Loads OSM map + polls local /api feeds. No commercial map/flight SDKs.
+ * Map shell plus local feeds. Tiles come from the nav profile, not public OSM.
  */
 
 (function () {
-  const map = L.map('map', { zoomControl: false }).setView([40.5, -84.5], 10);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap Contributors',
-  }).addTo(map);
+  const map = L.map('map', { zoomControl: false }).setView([40.0, -83.0], 7);
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+  window.SovereignMap = map;
 
   const deviceMarkers = L.layerGroup().addTo(map);
 
@@ -31,10 +29,14 @@
       }
       if (!res.ok) throw new Error(String(res.status));
       const data = await res.json();
+      if (data.configured === false || data.status === 'no receiver configured') {
+        el.innerHTML = '<p class="text-zinc-500">&gt; no receiver configured</p>';
+        return;
+      }
       const aircraft = data.aircraft || [];
       if (!aircraft.length) {
         el.innerHTML =
-          '<p class="text-emerald-500">&gt; Monitoring local dump1090 — no contacts</p>';
+          '<p class="text-zinc-500">&gt; receiver offline — no contacts</p>';
         return;
       }
       el.innerHTML = aircraft
@@ -47,8 +49,7 @@
         })
         .join('');
     } catch {
-      el.innerHTML =
-        '<p class="text-amber-500">&gt; ADS-B feed offline (start local dump1090)</p>';
+      el.innerHTML = '<p class="text-zinc-500">&gt; ADS-B unavailable</p>';
     }
   }
 
@@ -112,6 +113,7 @@
       refreshAdsb();
       refreshScanner();
       refreshTelemetryTracks();
+      if (window.SovereignNav) window.SovereignNav.onToken();
     });
   }
   if (keyInput) {
@@ -166,5 +168,4 @@
   setInterval(refreshScanner, 30_000);
   setInterval(refreshTelemetryTracks, 20_000);
 
-  window.SovereignMap = map;
 })();

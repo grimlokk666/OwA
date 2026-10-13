@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh Sovereign Overwatch navigation extracts
+Wants=network-online.target
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/owa
+Environment=NAV_REIMPORT_NOMINATIM=1
+ExecStart=/opt/owa/scripts/nav-refresh.sh
+Nice=10
