@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Allow HTTPS to Tailscale MagicDNS + cleartext HTTP to RFC1918 / CGNAT (100.x)
-  for self-hosted Overwatch without public ports.
-  Copy to: android/app/src/main/res/xml/network_security_config.xml
+  HTTPS only. Cleartext HTTP is disabled for every host, including lab DNS
+  and private addresses. Copy to:
+    android/app/src/main/res/xml/network_security_config.xml
 -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="false">
@@ -10,15 +10,4 @@
             <certificates src="system" />
         </trust-anchors>
     </base-config>
-
-    <domain-config cleartextTrafficPermitted="true">
-        <!-- Tailscale CGNAT -->
-        <domain includeSubdomains="true">ts.net</domain>
-        <!-- Common lab hosts — tighten for your mesh -->
-        <domain includeSubdomains="true">localhost</domain>
-        <domain includeSubdomains="true">local</domain>
-        <domain includeSubdomains="true">home.arpa</domain>
-    </domain-config>
-
-    <!-- Permit cleartext to private IP literals via cleartext on application tag -->
 </network-security-config>

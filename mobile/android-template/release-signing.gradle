@@ -1,0 +1,30 @@
+// Release signing for the Capacitor Android project.
+//
+// 1. Paste the Properties block ABOVE the android { } block in
+//    android/app/build.gradle.
+// 2. Paste signingConfigs INSIDE android { }.
+// 3. Inside the existing buildTypes.release block, add:
+//        signingConfig signingConfigs.release
+//
+// Key material comes from environment variables, then from
+// android/keystore.properties (gitignored). Never commit the keystore.
+
+// --- paste above android { } ---
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+// --- paste inside android { } ---
+signingConfigs {
+    release {
+        def storePath = System.getenv("OVERWATCH_KEYSTORE_PATH") ?: keystoreProperties.getProperty("storeFile", "")
+        if (storePath) {
+            storeFile rootProject.file(storePath)
+            storePassword System.getenv("OVERWATCH_KEYSTORE_PASSWORD") ?: keystoreProperties.getProperty("storePassword", "")
+            keyAlias System.getenv("OVERWATCH_KEY_ALIAS") ?: keystoreProperties.getProperty("keyAlias", "")
+            keyPassword System.getenv("OVERWATCH_KEY_PASSWORD") ?: keystoreProperties.getProperty("keyPassword", "")
+        }
+    }
+}

@@ -2,6 +2,12 @@
 .env
 *.pem
 *.key
+*.jks
+*.keystore
+keystore.properties
+
+# Local DB backups (may contain tracks)
+backups/
 
 # Python
 __pycache__/

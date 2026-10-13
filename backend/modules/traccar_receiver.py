@@ -28,6 +28,11 @@ def _load_key() -> Optional[bytes]:
         return None
 
 
+def encryption_key_configured() -> bool:
+    """True when TELEMETRY_ENCRYPTION_KEY decodes to 32 bytes."""
+    return _load_key() is not None
+
+
 def decrypt_envelope(envelope: dict[str, Any]) -> Optional[dict[str, Any]]:
     """Decrypt sovereign-aes-gcm-v1 envelope when a shared key is configured."""
     key = _load_key()

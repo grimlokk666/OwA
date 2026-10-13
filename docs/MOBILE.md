@@ -22,10 +22,16 @@ Two layers ship together:
    docker compose up -d --build
    ```
 2. On the phone, install **Tailscale** and join the same tailnet.
-3. Open `http://<tailscale-ip-or-magicdns>/` (frontend on port 80).
+3. Open the dashboard. Compose publishes it on `http://127.0.0.1:3012/`
+   (API on `http://127.0.0.1:8001/`). From a phone, point Tailscale Serve or
+   another HTTPS proxy at those localhost ports — the Android app allows HTTPS
+   only.
 4. Chrome → **Install app** / **Add to Home screen**.
-5. Optional: open the side panel → set **Callsign** → **Arm Node** to POST
-   GPS every 60s to `/api/telemetry` (IndexedDB queues while offline).
+5. In the side panel set **Callsign**, **API token** (`ALERT_TOKEN`, sent as
+   `X-Overwatch-Token`), and **AES key** (or open the dashboard once as
+   `/#key=<base64>`; the hash is stored and then removed). **Arm Node** posts
+   an encrypted fix every 60s. IndexedDB queues while offline and encrypts
+   again on flush. Encryption failure does not send plaintext.
 
 Files:
 
@@ -50,6 +56,7 @@ npm install
 npm run build
 npx cap add android          # first time only
 # Merge permissions from mobile/android-template/ into android/app/src/main/
+# HTTPS only — the template sets cleartextTrafficPermitted=false
 cp mobile/android-template/network_security_config.xml \
    android/app/src/main/res/xml/network_security_config.xml
 # Merge uses-permission entries from mobile/android-template/AndroidManifest.xml
@@ -68,10 +75,11 @@ Copy the APK over Tailscale/SCP/USB. No Google account required.
 ### Runtime config
 
 1. Ensure Tailscale is connected on the phone.
-2. Open Overwatch → enter MagicDNS URL (e.g. `https://overwatch.tailnet.ts.net`
-   or `http://100.x.y.z`).
-3. Optional: paste the same `TELEMETRY_ENCRYPTION_KEY` base64 from `.env`.
-4. **Arm Telemetry** — posts every 60 seconds.
+2. Open Overwatch → enter the HTTPS base URL of the dashboard.
+3. Paste the same `TELEMETRY_ENCRYPTION_KEY` base64 from `.env`, and the
+   `ALERT_TOKEN` (sent as `X-Overwatch-Token` on telemetry posts).
+4. **Arm Telemetry** — posts an encrypted envelope every 60 seconds.
+   A missing or bad key is not sent as plaintext.
 
 ### Permissions to grant on device
 
@@ -135,9 +143,12 @@ service on Android and OwnTracks/Traccar Client on iOS pointing at the same
 
 ## 4. Telemetry contract
 
-`POST /api/telemetry`
+`POST /api/telemetry` requires a `sovereign-aes-gcm-v1` envelope when
+`TELEMETRY_REQUIRE_KEY` is true (the default). Plaintext JSON is rejected.
+If the server has no `TELEMETRY_ENCRYPTION_KEY`, the envelope is rejected
+instead of being stored at latitude/longitude `0,0`.
 
-Plaintext:
+The ciphertext is `JSON.stringify` of the point:
 
 ```json
 {
@@ -156,7 +167,7 @@ Plaintext:
 }
 ```
 
-Encrypted envelope (`TELEMETRY_ENCRYPTION_KEY` set on both ends):
+Envelope:
 
 ```json
 {
@@ -169,15 +180,63 @@ Encrypted envelope (`TELEMETRY_ENCRYPTION_KEY` set on both ends):
 }
 ```
 
-Batch replay (IndexedDB flush): `TelemetryPoint[]`.
+Offline replay posts one envelope at a time (the queue stores the point
+locally and encrypts it on flush). A plaintext batch is only accepted when
+`TELEMETRY_REQUIRE_KEY=false`, and it is capped at 500 points.
 
-Inspect tracks: `GET /api/telemetry/latest?limit=50`.
+`GET /api/telemetry/latest`, `/api/pois`, `/api/cameras`, `/api/adsb`, and
+`/api/scanner` require the header `X-Overwatch-Token: <ALERT_TOKEN>`.
+`POST /api/alert` uses the same header. `/health` stays open for the
+container healthcheck.
+
+## 5. Android release signing
+
+The debug APK from Android Studio is enough for a personal sideload. A release
+APK needs a keystore you control. **Back up the keystore and both passwords
+offline.** Losing them means you cannot install an update over the existing
+app; you would have to uninstall and lose the app's local data. This repository
+is public: never commit `*.jks`, `*.keystore`, or `keystore.properties`.
+
+Generate a keystore (run this outside the repo, or in a gitignored path):
+
+```bash
+keytool -genkeypair -v \
+  -keystore overwatch-release.keystore \
+  -alias overwatch \
+  -keyalg RSA -keysize 2048 -validity 10000
+```
+
+Wire Gradle from environment variables or from `android/keystore.properties`
+(copy `mobile/android-template/keystore.properties.example`). The signing
+block to merge is `mobile/android-template/release-signing.gradle`.
+
+```bash
+export OVERWATCH_KEYSTORE_PATH="$HOME/keys/overwatch-release.keystore"
+export OVERWATCH_KEYSTORE_PASSWORD="..."
+export OVERWATCH_KEY_ALIAS="overwatch"
+export OVERWATCH_KEY_PASSWORD="..."
+cd android && ./gradlew assembleRelease
+```
+
+`keystore.properties` (gitignored), same keys as the example file:
+
+```
+storeFile=/absolute/or/project-relative/overwatch-release.keystore
+storePassword=...
+keyAlias=overwatch
+keyPassword=...
+```
+
+Environment variables win over the properties file when both are set.
+Inside `android/app/build.gradle`, add `signingConfig signingConfigs.release`
+to `buildTypes.release` after pasting the snippet.
 
 ---
 
-## 5. Why this respects Sovereign D
+## 6. Why this respects Sovereign D
 
 - Binaries and PWA assets are **yours** — sideload / Add to Home Screen.
 - No Play Billing, no ATT, no store analytics SDKs.
 - Reachability is **Tailscale mesh**, not a public router port.
-- Optional AES-GCM is defense-in-depth on top of WireGuard.
+- AES-GCM envelopes and the `X-Overwatch-Token` header stay on your mesh.
+  The Android app allows HTTPS only.

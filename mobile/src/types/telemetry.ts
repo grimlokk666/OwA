@@ -48,10 +48,12 @@ export interface TelemetryConfig {
   callsign: string;
   deviceId: string;
   /**
-   * Optional AES-GCM key as base64 (32 raw bytes).
-   * When empty, posts plaintext JSON over Tailscale/TLS only.
+   * AES-GCM key as base64 (32 raw bytes). Required.
+   * Encryption failure does not fall back to plaintext.
    */
   encryptionKeyBase64: string;
+  /** Shared API token sent as the X-Overwatch-Token header. */
+  apiToken: string;
   /** Dashboard URL loaded in the operational viewer iframe/WebView */
   dashboardUrl: string;
   enabled: boolean;
@@ -65,6 +67,7 @@ export const DEFAULT_TELEMETRY_CONFIG: Omit<
   telemetryPath: '/api/telemetry',
   intervalMs: 60_000,
   encryptionKeyBase64: '',
+  apiToken: '',
   dashboardUrl: '',
   enabled: false,
 };

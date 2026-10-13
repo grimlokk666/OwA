@@ -6,10 +6,8 @@ import type { CapacitorConfig } from '@capacitor/cli';
  * Local-first: the WebView loads your self-hosted dashboard over Tailscale.
  * No Play Store / App Store distribution required — sideload the APK/IPA.
  *
- * Set SOVEREIGN_DASHBOARD_URL to your Tailscale MagicDNS or mesh IP, e.g.:
- *   https://overwatch.tailnet-name.ts.net
- * or leave empty to serve the bundled PWA shell (www/) which then navigates
- * to the URL configured in local settings.
+ * Set SOVEREIGN_DASHBOARD_URL to an HTTPS origin, or leave it empty and
+ * enter the URL in the app. Cleartext HTTP is disabled.
  */
 const dashboardUrl = process.env.SOVEREIGN_DASHBOARD_URL?.trim() || undefined;
 
@@ -22,7 +20,7 @@ const config: CapacitorConfig = {
   server: dashboardUrl
     ? {
         url: dashboardUrl,
-        cleartext: dashboardUrl.startsWith('http://'),
+        cleartext: false,
         allowNavigation: [
           '*.ts.net',
           '100.*',
@@ -34,10 +32,10 @@ const config: CapacitorConfig = {
         ],
       }
     : {
-        // Bundled PWA; operator configures backend URL in-app.
+        // Bundled PWA; operator configures an HTTPS backend URL in-app.
         androidScheme: 'https',
         iosScheme: 'https',
-        cleartext: true,
+        cleartext: false,
         allowNavigation: [
           '*.ts.net',
           '100.*',
@@ -49,7 +47,7 @@ const config: CapacitorConfig = {
         ],
       },
   android: {
-    allowMixedContent: true,
+    allowMixedContent: false,
     backgroundColor: '#0a0e14',
     webContentsDebuggingEnabled: false,
   },

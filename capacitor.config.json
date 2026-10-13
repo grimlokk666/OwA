@@ -5,7 +5,7 @@
   "server": {
     "androidScheme": "https",
     "iosScheme": "https",
-    "cleartext": true,
+    "cleartext": false,
     "allowNavigation": [
       "*.ts.net",
       "100.*",
@@ -17,7 +17,7 @@
     ]
   },
   "android": {
-    "allowMixedContent": true,
+    "allowMixedContent": false,
     "backgroundColor": "#0a0e14",
     "webContentsDebuggingEnabled": false
   },

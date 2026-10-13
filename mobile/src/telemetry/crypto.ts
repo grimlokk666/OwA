@@ -1,6 +1,7 @@
 /**
- * Optional AES-256-GCM envelope for POST /api/telemetry.
+ * AES-256-GCM envelope for POST /api/telemetry.
  * Key stays on-device (Preferences / localStorage) — never sent to SaaS.
+ * Encryption failure throws. Callers must not post the plaintext point.
  */
 
 import type { EncryptedTelemetryEnvelope, TelemetryPoint } from '../types/telemetry';
@@ -23,13 +24,15 @@ function bytesToB64(bytes: Uint8Array): string {
 export async function encryptPoint(
   point: TelemetryPoint,
   keyBase64: string
-): Promise<TelemetryPoint | EncryptedTelemetryEnvelope> {
-  if (!keyBase64.trim()) return point;
+): Promise<EncryptedTelemetryEnvelope> {
+  const trimmed = keyBase64.trim();
+  if (!trimmed) {
+    throw new Error('encryption key required');
+  }
 
-  const keyBytes = b64ToBytes(keyBase64.trim());
+  const keyBytes = b64ToBytes(trimmed);
   if (keyBytes.byteLength !== 32) {
-    console.warn('Encryption key must be 32 bytes base64; sending plaintext');
-    return point;
+    throw new Error('encryption key must be 32 raw bytes (base64)');
   }
 
   const key = await crypto.subtle.importKey(
